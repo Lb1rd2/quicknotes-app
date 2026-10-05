@@ -2,10 +2,32 @@ const form = document.querySelector("#note-form");
 const noteInput = document.querySelector("#note-input");
 const categorySelect = document.querySelector("#note-category");
 const errorMessage = document.querySelector("#error-message");
+const searchInput = document.querySelector("#search-input");
 const notesList = document.querySelector("#notes-list");
 const noteCount = document.querySelector("#note-count");
 
+const STORAGE_KEY = "quicknotes";
+
 let notes = [];
+
+function saveNotes() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+}
+
+function loadNotes() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (!saved) {
+    return;
+  }
+  try {
+    const parsed = JSON.parse(saved);
+    if (Array.isArray(parsed)) {
+      notes = parsed;
+    }
+  } catch (error) {
+    notes = [];
+  }
+}
 
 function updateCount() {
   if (notes.length === 0) {
@@ -21,13 +43,26 @@ function deleteNote(id) {
   notes = notes.filter(function (note) {
     return note.id !== id;
   });
+  saveNotes();
   render();
 }
 
 function render() {
   notesList.replaceChildren();
 
-  for (const note of notes) {
+  const searchText = searchInput.value.trim().toLowerCase();
+  const visibleNotes = notes.filter(function (note) {
+    return note.text.toLowerCase().includes(searchText);
+  });
+
+  if (searchText !== "" && visibleNotes.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "no-results";
+    empty.textContent = "No notes match your search.";
+    notesList.append(empty);
+  }
+
+  for (const note of visibleNotes) {
     const li = document.createElement("li");
     li.className = "note category-" + note.category;
 
@@ -85,8 +120,12 @@ form.addEventListener("submit", function (event) {
   };
 
   notes.unshift(note);
+  saveNotes();
   noteInput.value = "";
   render();
 });
 
+searchInput.addEventListener("input", render);
+
+loadNotes();
 render();
